@@ -69,31 +69,42 @@
         }
     }
 
-    function processQuery() {
+function processQuery() {
         const input = document.getElementById('user-in').value.trim();
         if (!input) return;
         addLog("User", input);
         document.getElementById('user-in').value = "";
 
-        // BROAD-NET SEARCH: Find every sentence that contains the query word
-        const queryWords = input.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+        // Filter out "what is", "who is", etc. to find the CORE topic
+        const cleanQuery = input.toLowerCase()
+            .replace(/what is a /g, "").replace(/what is /g, "")
+            .replace(/who is /g, "").replace(/tell me about /g, "");
+        
+        const queryWords = cleanQuery.split(/\s+/).filter(w => w.length > 2);
         let results = [];
 
+        // SCAN: Grab matches but prioritize sentences where the word appears early
         knowledgeBase.forEach(sentence => {
-            let isMatch = false;
+            let matchCount = 0;
             queryWords.forEach(word => {
-                if (sentence.toLowerCase().includes(word)) isMatch = true;
+                if (sentence.toLowerCase().includes(word)) matchCount++;
             });
-            if (isMatch) results.push(sentence);
+            
+            if (matchCount > 0) {
+                results.push({ text: sentence, score: matchCount });
+            }
         });
 
-        // RESPONSE LOGIC
+        // SORT & LIMIT: Show the top 5 most relevant sentences so it stays readable
         if (results.length > 0) {
-            // Generalize: Combine all found sentences into one response
-            let fullResponse = results.join(". ").replace(/\.\./g, ".");
+            results.sort((a, b) => b.score - a.score);
+            let topMatches = results.slice(0, 5).map(r => r.text);
+            
+            // Join them and clean up the "echo" loops
+            let fullResponse = topMatches.join(". ").replace(/\.\./g, ".");
             addLog("Johan", fullResponse);
         } else {
-            addLog("Johan", "No data matches found for '" + input + "' in the current stream.");
+            addLog("Johan", "I have no data on '" + cleanQuery + "' in this uplink, King.");
         }
     }
 
