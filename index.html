@@ -2,181 +2,170 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Johan v29.0: GitHub Auto-Hybrid</title>
+    <title>Johan v31.0: Multi-Source</title>
     <style>
-        :root { --bg: #050505; --neon: #00ffcc; --text: #d1d1d1; --accent: #bb86fc; --dark: #111; }
+        :root { --bg: #050505; --neon: #00ffcc; --text: #d1d1d1; --accent: #bb86fc; --dark: #111; --panel: #161616; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; height: 100vh; overflow: hidden; }
-        #sidebar { width: 400px; background: var(--dark); padding: 15px; border-right: 1px solid #333; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
-        .panel { background: #161616; padding: 12px; border-radius: 8px; border: 1px solid #222; }
+        
+        #sidebar { width: 380px; background: var(--dark); padding: 15px; border-right: 1px solid #333; display: flex; flex-direction: column; gap: 15px; }
+        .panel { background: var(--panel); padding: 12px; border-radius: 8px; border: 1px solid #222; }
         .panel-label { font-size: 10px; color: #888; text-transform: uppercase; margin-bottom: 8px; display: block; font-weight: bold; }
-        #status-light { width: 10px; height: 10px; border-radius: 50%; display: inline-block; background: #555; margin-right: 5px; }
-        textarea { width: 100%; height: 120px; background: #000; color: var(--neon); border: 1px solid #444; padding: 10px; font-family: monospace; font-size: 11px; box-sizing: border-box; }
-        #heatmap { height: 200px; overflow-y: auto; background: #000; padding: 8px; border: 1px solid #333; font-family: monospace; font-size: 11px; color: #aaa; }
+        
+        /* Dropdown Styling */
+        select { 
+            width: 100%; background: #000; color: var(--neon); border: 1px solid var(--neon); 
+            padding: 10px; border-radius: 5px; outline: none; cursor: pointer; font-family: monospace;
+        }
+        
+        #status { font-size: 12px; color: var(--neon); margin-top: 5px; }
+        #log { flex: 1; overflow-y: auto; background: rgba(0,0,0,0.3); border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid #222; display: flex; flex-direction: column; }
+        .msg { margin-bottom: 15px; padding: 12px; border-radius: 8px; max-width: 85%; line-height: 1.4; border: 1px solid #333; }
+        .user { background: #1a1a1a; color: var(--neon); align-self: flex-end; border-color: var(--neon); }
+        .ai { background: #121212; color: var(--accent); align-self: flex-start; border-color: var(--accent); }
+        
         #chat { flex: 1; display: flex; flex-direction: column; padding: 25px; background: #0a0a0a; }
-        #log { flex: 1; overflow-y: auto; background: rgba(0,0,0,0.3); border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid #222; }
-        .msg { margin-bottom: 15px; padding: 12px; border-radius: 8px; max-width: 85%; }
-        .user { background: #1a1a1a; color: var(--neon); align-self: flex-end; border: 1px solid #333; }
-        .ai { background: #121212; color: var(--accent); align-self: flex-start; border: 1px solid #333; font-weight: 500; }
         input { background: #000; color: var(--neon); border: 1px solid #333; padding: 15px; border-radius: 8px; width: 100%; box-sizing: border-box; font-size: 16px; outline: none; }
-        button { cursor: pointer; border: none; border-radius: 6px; font-weight: bold; padding: 10px; background: var(--neon); color: #000; }
+        button { cursor: pointer; border: none; border-radius: 6px; font-weight: bold; padding: 12px; background: var(--neon); color: #000; transition: 0.2s; }
+        button:hover { filter: brightness(1.2); transform: scale(1.02); }
     </style>
 </head>
 <body>
 
 <div id="sidebar">
-    <h2 style="color: var(--neon); margin: 0;">🧠 JOHAN v29.0</h2>
+    <h2 style="color: var(--neon); margin: 0;">🧠 JOHAN v31</h2>
     
     <div class="panel">
-        <span class="panel-label">🌐 Cloud Status</span>
-        <div style="font-size: 12px;"><span id="status-light"></span> <span id="status-text">Disconnected</span></div>
-        <button onclick="fetchFromGitHub()" style="width: 100%; margin-top: 10px; font-size: 10px;">FORCE CLOUD SYNC</button>
+        <span class="panel-label">Select Knowledge Source</span>
+        <select id="source-selector" onchange="fetchGitHub()">
+            <option value="https://raw.githubusercontent.com/UnrealCreative/aiTrainingData/main/main.txt">MAIN.TXT (Original)</option>
+            <option value="https://raw.githubusercontent.com/UnrealCreative/aiTrainingData/main/New.txt">NEW.TXT (Linguistics/History)</option>
+            <option value="https://raw.githubusercontent.com/UnrealCreative/aiTrainingData/main/New1.txt">NEW1.TXT (Expanding...)</option>
+        </select>
+        <div id="status">📡 System Standing By</div>
     </div>
 
-    <div class="panel">
-        <span class="panel-label">📜 GENai Local Cache</span>
-        <textarea id="data-input" placeholder="GitHub data will appear here..."></textarea>
-    </div>
-
-    <div class="panel">
-        <span class="panel-label">📈 Logic Heatmap</span>
-        <div id="heatmap">...</div>
+    <div class="panel" style="flex: 1; overflow-y: auto;">
+        <span class="panel-label">Data Preview</span>
+        <div id="knowledge-preview" style="font-size: 10px; color: #666; line-height: 1.6;">Select a source to view data...</div>
     </div>
 </div>
 
 <div id="chat">
     <div id="log"></div>
     <div style="display:flex; gap:10px;">
-        <input type="text" id="user-in" placeholder="Talk to the Cloud, King..." onkeypress="if(event.key==='Enter') generate()">
-        <button onclick="generate()" style="padding: 0 40px;">FIRE</button>
+        <input type="text" id="user-in" placeholder="Ask your creation, King..." onkeypress="if(event.key==='Enter') processQuery()">
+        <button onclick="processQuery()" style="padding: 0 40px;">FIRE</button>
     </div>
 </div>
 
 <script>
-    window.brainWeights = {};
-    window.knowledgeBase = [];
-    const temperature = 0.8;
-    const GITHUB_URL = "https://raw.githubusercontent.com/UnrealCreative/aiTrainingData/main/main.txt";
+    let knowledgeBase = [];
+    let brainWeights = {};
 
-    // 1. AUTOMATIC CLOUD FETCH
-    async function fetchFromGitHub() {
-        const statusLight = document.getElementById('status-light');
-        const statusText = document.getElementById('status-text');
-        statusLight.style.background = "orange";
-        statusText.innerText = "Syncing with King's GitHub...";
+    async function fetchGitHub() {
+        const url = document.getElementById('source-selector').value;
+        const status = document.getElementById('status');
+        const preview = document.getElementById('knowledge-preview');
+        
+        status.innerText = "🔄 Fetching Cloud Data...";
+        status.style.color = "orange";
 
         try {
-            const response = await fetch(GITHUB_URL);
-            if (!response.ok) throw new Error("Connection failed");
-            const rawData = await response.text();
+            const res = await fetch(url);
+            const text = await res.text();
             
-            document.getElementById('data-input').value = rawData;
+            // Clean split logic: handles both punctuation and tables better
+            knowledgeBase = text.split(/[.\n]/).map(s => s.trim()).filter(s => s.length > 5);
             
-            // Sync GENai (RAG)
-            window.knowledgeBase = rawData.split(/[.\n]/).filter(s => s.trim().length > 10);
+            preview.innerText = "• " + knowledgeBase.slice(0, 15).join("\n• ");
+            status.innerText = "✅ Source Synced Successfully";
+            status.style.color = "var(--neon)";
             
-            // Sync Johan (Markov)
-            bulkLearn(window.knowledgeBase);
-
-            statusLight.style.background = "var(--neon)";
-            statusText.innerText = "GitHub Connected & Trained";
-            addLog("System", "Cloud data integrated successfully.");
+            addLog("System", "Johan has switched his focus to the new source.");
         } catch (e) {
-            statusLight.style.background = "red";
-            statusText.innerText = "Offline Mode";
-            addLog("System", "Could not reach GitHub. Using local identity.");
-            bulkLearn(["Who is King? King is my creator.", "Who are you? I am Johan."]);
+            status.innerText = "❌ Fetch Error";
+            status.style.color = "red";
         }
     }
 
-    function bulkLearn(data) {
-        data.forEach(text => {
-            let tokens = text.toLowerCase().replace(/([.!?])/g, " $1 ").split(/\s+/).filter(w => w);
-            for (let n = 1; n <= 4; n++) {
-                for (let i = 0; i <= tokens.length - n; i++) {
-                    let ctx = tokens.slice(i, i + n).join("_");
-                    let next = tokens[i + n];
-                    if (next) {
-                        if (!window.brainWeights[ctx]) window.brainWeights[ctx] = {};
-                        window.brainWeights[ctx][next] = (window.brainWeights[ctx][next] || 0) + 10;
-                    }
-                }
-            }
-        });
-        updateHeatmap();
-    }
-
-    function generate() {
-        let input = document.getElementById('user-in').value.toLowerCase().trim();
-        if(!input) return;
+    function processQuery() {
+        const input = document.getElementById('user-in').value.trim();
+        if (!input) return;
         addLog("User", input);
+        document.getElementById('user-in').value = "";
 
-        // GENai RAG Search
-        let queryWords = input.replace(/[^\w\s]/g, "").split(/\s+/).filter(w => w.length > 2);
-        let relevant = [];
-        window.knowledgeBase.forEach(fact => {
-            queryWords.forEach(word => { if (fact.toLowerCase().includes(word)) relevant.push(fact); });
+        // Reset the N-gram brain for the new response
+        brainWeights = {};
+        
+        // BETTER SEARCH LOGIC (Scans for word overlap)
+        const queryWords = input.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+        let bestMatch = "";
+        let highestScore = 0;
+
+        knowledgeBase.forEach(sentence => {
+            let score = 0;
+            queryWords.forEach(word => {
+                if (sentence.toLowerCase().includes(word)) score += 10;
+            });
+            if (score > highestScore) {
+                highestScore = score;
+                bestMatch = sentence;
+            }
         });
 
-        // Instant Learning
-        if (relevant.length > 0) bulkLearn(relevant);
-
-        // Johan Response
-        let tokens = input.replace(/([.!?])/g, " $1 ").split(/\s+/).filter(w => w);
-        let res = [];
-        let memory = tokens.slice(-4);
-
-        for (let i = 0; i < 20; i++) {
-            let picked = null;
-            for (let size = Math.min(memory.length, 4); size >= 1; size--) {
-                let key = memory.slice(-size).join("_");
-                let options = window.brainWeights[key] || {};
-                let choices = Object.keys(options);
-                if (choices.length > 0) {
-                    let total = 0;
-                    let weighted = choices.map(word => {
-                        let w = Math.pow(options[word], 1 / temperature);
-                        total += w; return { word, w };
-                    });
-                    let r = Math.random() * total;
-                    let s = 0;
-                    for (let item of weighted) {
-                        s += item.w;
-                        if (r <= s) { picked = item.word; break; }
-                    }
-                }
-                if (picked) break;
-            }
-            if (picked) {
-                res.push(picked);
-                if (".!?".includes(picked)) break;
-                memory.push(picked);
-                if (memory.length > 4) memory.shift();
-            } else break;
+        if (bestMatch && highestScore > 0) {
+            trainJohan([bestMatch]);
+            const response = generateResponse();
+            addLog("Johan", response);
+        } else {
+            addLog("Johan", "I cannot find a logical link to that in the current source, King.");
         }
+    }
 
-        let out = res.join(" ").replace(/\s+([.!?])/g, "$1");
-        addLog("Johan", out.charAt(0).toUpperCase() + out.slice(1) || "I am processing the GitHub data...");
-        document.getElementById('user-in').value = "";
-        updateHeatmap();
+    function trainJohan(sentences) {
+        sentences.forEach(s => {
+            const tokens = s.toLowerCase().replace(/([.!?])/g, " $1 ").split(/\s+/).filter(w => w);
+            for (let i = 0; i < tokens.length - 1; i++) {
+                const ctx = tokens[i];
+                const next = tokens[i+1];
+                if (!brainWeights[ctx]) brainWeights[ctx] = {};
+                brainWeights[ctx][next] = (brainWeights[ctx][next] || 0) + 1;
+            }
+        });
+    }
+
+    function generateResponse() {
+        // Start from the very first word in our temporary brain
+        let currentWord = Object.keys(brainWeights)[0];
+        let result = [currentWord];
+        
+        for (let i = 0; i < 40; i++) {
+            const options = brainWeights[currentWord];
+            if (!options) break;
+            
+            // Pick most likely word (Greedy search for accuracy)
+            const next = Object.keys(options).reduce((a, b) => options[a] > options[b] ? a : b);
+            result.push(next);
+            
+            if (".!?".includes(next)) break;
+            currentWord = next;
+        }
+        
+        let final = result.join(" ").replace(/\s+([.!?])/g, "$1");
+        return final.charAt(0).toUpperCase() + final.slice(1);
     }
 
     function addLog(s, t) {
-        let l = document.getElementById('log');
-        let d = document.createElement('div');
+        const log = document.getElementById('log');
+        const d = document.createElement('div');
         d.className = `msg ${s.toLowerCase()}`;
         d.innerHTML = `<strong>${s.toUpperCase()}</strong><br>${t}`;
-        l.appendChild(d); l.scrollTop = l.scrollHeight;
+        log.appendChild(d);
+        log.scrollTop = log.scrollHeight;
     }
 
-    function updateHeatmap() {
-        let h = document.getElementById('heatmap'); h.innerHTML = "";
-        Object.keys(window.brainWeights).slice(-30).forEach(k => {
-            for(let n in window.brainWeights[k]) h.innerHTML += `<div>${k.replace(/_/g,' ')} → ${n}</div>`;
-        });
-    }
-
-    // AUTO-START
-    window.onload = fetchFromGitHub;
+    // Initialize on first load
+    window.onload = fetchGitHub;
 </script>
 </body>
 </html>
