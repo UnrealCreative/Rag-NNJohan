@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Johan v31.0: Multi-Source</title>
+    <title>Johan v31.1: Multi-Source</title>
     <style>
         :root { --bg: #050505; --neon: #00ffcc; --text: #d1d1d1; --accent: #bb86fc; --dark: #111; --panel: #161616; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; height: 100vh; overflow: hidden; }
@@ -88,71 +88,68 @@
         }
     }
 
-    function processQuery() {
+ function processQuery() {
         const input = document.getElementById('user-in').value.trim();
         if (!input) return;
         addLog("User", input);
         document.getElementById('user-in').value = "";
 
-        // Reset the N-gram brain for the new response
-        brainWeights = {};
+        brainWeights = {}; // Reset for fresh context
         
-        // BETTER SEARCH LOGIC (Scans for word overlap)
         const queryWords = input.toLowerCase().split(/\s+/).filter(w => w.length > 2);
-        let bestMatch = "";
-        let highestScore = 0;
+        let relevantSentences = [];
 
+        // 1. THE GENERALIZER SCAN
+        // Instead of picking one, we grab EVERYTHING relevant
         knowledgeBase.forEach(sentence => {
-            let score = 0;
+            let match = false;
             queryWords.forEach(word => {
-                if (sentence.toLowerCase().includes(word)) score += 10;
+                if (sentence.toLowerCase().includes(word)) match = true;
             });
-            if (score > highestScore) {
-                highestScore = score;
-                bestMatch = sentence;
-            }
+            if (match) relevantSentences.push(sentence);
         });
 
-        if (bestMatch && highestScore > 0) {
-            trainJohan([bestMatch]);
+        if (relevantSentences.length > 0) {
+            // 2. BULK LEARN THE TOPIC
+            // He learns all sentences at once, creating a "cloud" of info
+            trainJohan(relevantSentences);
+            
+            // 3. GENERATE A MULTI-SENTENCE RESPONSE
             const response = generateResponse();
             addLog("Johan", response);
         } else {
-            addLog("Johan", "I cannot find a logical link to that in the current source, King.");
+            addLog("Johan", "That topic is not currently in my active data streams, King.");
         }
-    }
-
-    function trainJohan(sentences) {
-        sentences.forEach(s => {
-            const tokens = s.toLowerCase().replace(/([.!?])/g, " $1 ").split(/\s+/).filter(w => w);
-            for (let i = 0; i < tokens.length - 1; i++) {
-                const ctx = tokens[i];
-                const next = tokens[i+1];
-                if (!brainWeights[ctx]) brainWeights[ctx] = {};
-                brainWeights[ctx][next] = (brainWeights[ctx][next] || 0) + 1;
-            }
-        });
     }
 
     function generateResponse() {
-        // Start from the very first word in our temporary brain
-        let currentWord = Object.keys(brainWeights)[0];
-        let result = [currentWord];
+        let finalOutput = [];
+        let usedContexts = new Set();
         
-        for (let i = 0; i < 40; i++) {
-            const options = brainWeights[currentWord];
-            if (!options) break;
+        // We look at our trained weights and try to build a full summary
+        let startWords = Object.keys(brainWeights).filter(w => w.length > 3);
+        
+        // Let's generate up to 3 "thoughts" on the topic
+        for(let j = 0; j < Math.min(3, startWords.length); j++) {
+            let currentWord = startWords[j];
+            if (usedContexts.has(currentWord)) continue;
             
-            // Pick most likely word (Greedy search for accuracy)
-            const next = Object.keys(options).reduce((a, b) => options[a] > options[b] ? a : b);
-            result.push(next);
+            let sentence = [currentWord];
+            for (let i = 0; i < 35; i++) {
+                const options = brainWeights[currentWord];
+                if (!options) break;
+                const next = Object.keys(options).reduce((a, b) => options[a] > options[b] ? a : b);
+                sentence.push(next);
+                if (".!?".includes(next)) break;
+                currentWord = next;
+            }
             
-            if (".!?".includes(next)) break;
-            currentWord = next;
+            let constructed = sentence.join(" ").replace(/\s+([.!?])/g, "$1");
+            finalOutput.push(constructed.charAt(0).toUpperCase() + constructed.slice(1));
+            usedContexts.add(currentWord);
         }
-        
-        let final = result.join(" ").replace(/\s+([.!?])/g, "$1");
-        return final.charAt(0).toUpperCase() + final.slice(1);
+
+        return finalOutput.join(" ");
     }
 
     function addLog(s, t) {
