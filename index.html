@@ -2,62 +2,51 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Johan v28.0: GENai Hybrid</title>
+    <title>Johan v29.0: GitHub Auto-Hybrid</title>
     <style>
-        :root { --bg: #050505; --neon: #00ffcc; --text: #d1d1d1; --accent: #bb86fc; --dark: #111; --good: #28a745; --bad: #dc3545; }
+        :root { --bg: #050505; --neon: #00ffcc; --text: #d1d1d1; --accent: #bb86fc; --dark: #111; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; height: 100vh; overflow: hidden; }
         #sidebar { width: 400px; background: var(--dark); padding: 15px; border-right: 1px solid #333; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
         .panel { background: #161616; padding: 12px; border-radius: 8px; border: 1px solid #222; }
         .panel-label { font-size: 10px; color: #888; text-transform: uppercase; margin-bottom: 8px; display: block; font-weight: bold; }
-        textarea { width: 100%; height: 100px; background: #000; color: var(--neon); border: 1px solid #444; padding: 10px; font-family: monospace; font-size: 11px; box-sizing: border-box; }
+        #status-light { width: 10px; height: 10px; border-radius: 50%; display: inline-block; background: #555; margin-right: 5px; }
+        textarea { width: 100%; height: 120px; background: #000; color: var(--neon); border: 1px solid #444; padding: 10px; font-family: monospace; font-size: 11px; box-sizing: border-box; }
         #heatmap { height: 200px; overflow-y: auto; background: #000; padding: 8px; border: 1px solid #333; font-family: monospace; font-size: 11px; color: #aaa; }
         #chat { flex: 1; display: flex; flex-direction: column; padding: 25px; background: #0a0a0a; }
         #log { flex: 1; overflow-y: auto; background: rgba(0,0,0,0.3); border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid #222; }
-        .msg { margin-bottom: 15px; padding: 12px; border-radius: 8px; max-width: 85%; line-height: 1.4; }
+        .msg { margin-bottom: 15px; padding: 12px; border-radius: 8px; max-width: 85%; }
         .user { background: #1a1a1a; color: var(--neon); align-self: flex-end; border: 1px solid #333; }
         .ai { background: #121212; color: var(--accent); align-self: flex-start; border: 1px solid #333; font-weight: 500; }
-        .controls { display: flex; gap: 10px; margin-bottom: 15px; }
         input { background: #000; color: var(--neon); border: 1px solid #333; padding: 15px; border-radius: 8px; width: 100%; box-sizing: border-box; font-size: 16px; outline: none; }
-        button { cursor: pointer; border: none; border-radius: 6px; font-weight: bold; padding: 10px; transition: 0.2s; background: var(--neon); color: #000; }
-        button:hover { opacity: 0.8; transform: translateY(-1px); }
+        button { cursor: pointer; border: none; border-radius: 6px; font-weight: bold; padding: 10px; background: var(--neon); color: #000; }
     </style>
 </head>
 <body>
 
 <div id="sidebar">
-    <h2 style="color: var(--neon); margin: 0;">👑 JOHAN HYBRID</h2>
-
+    <h2 style="color: var(--neon); margin: 0;">🧠 JOHAN v29.0</h2>
+    
     <div class="panel">
-        <span class="panel-label">🧠 GENai Database (Knowledge)</span>
-        <textarea id="data-input">
-King is the creator of this AI.
-King has a mustache and writes clean code.
-Artificial intelligence is a branch of code.
-The future of AI is determined by King.
-Machine learning is a subset of AI.
-        </textarea>
-        <button onclick="syncKnowledge()" style="width: 100%; margin-top: 5px; font-size: 10px;">SYNC KNOWLEDGE</button>
+        <span class="panel-label">🌐 Cloud Status</span>
+        <div style="font-size: 12px;"><span id="status-light"></span> <span id="status-text">Disconnected</span></div>
+        <button onclick="fetchFromGitHub()" style="width: 100%; margin-top: 10px; font-size: 10px;">FORCE CLOUD SYNC</button>
     </div>
 
     <div class="panel">
-        <span class="panel-label">📊 Johan's Active Brain</span>
-        <div id="heatmap">Ready...</div>
+        <span class="panel-label">📜 GENai Local Cache</span>
+        <textarea id="data-input" placeholder="GitHub data will appear here..."></textarea>
     </div>
 
-    <div class="panel" style="display:flex; gap: 5px;">
-        <button onclick="exportBrain()" style="background:#333; color:white; font-size: 10px; flex:1;">EXPORT</button>
-        <button onclick="location.reload()" style="background:#522; color:white; font-size: 10px; flex:1;">RESET</button>
+    <div class="panel">
+        <span class="panel-label">📈 Logic Heatmap</span>
+        <div id="heatmap">...</div>
     </div>
 </div>
 
 <div id="chat">
     <div id="log"></div>
-    <div class="controls">
-        <button onclick="adjustWeight(3.0)" style="background:var(--good); color:white; flex:1;">✅ GOOD</button>
-        <button onclick="adjustWeight(0.3)" style="background:var(--bad); color:white; flex:1;">❌ BAD</button>
-    </div>
     <div style="display:flex; gap:10px;">
-        <input type="text" id="user-in" placeholder="Ask your Hybrid, King..." onkeypress="if(event.key==='Enter') generate()">
+        <input type="text" id="user-in" placeholder="Talk to the Cloud, King..." onkeypress="if(event.key==='Enter') generate()">
         <button onclick="generate()" style="padding: 0 40px;">FIRE</button>
     </div>
 </div>
@@ -65,22 +54,44 @@ Machine learning is a subset of AI.
 <script>
     window.brainWeights = {};
     window.knowledgeBase = [];
-    window.lastPath = [];
     const temperature = 0.8;
+    const GITHUB_URL = "https://raw.githubusercontent.com/UnrealCreative/aiTrainingData/main/main.txt";
 
-    function syncKnowledge() {
-        const raw = document.getElementById('data-input').value;
-        // GENai Logic: Split into factual sentences
-        window.knowledgeBase = raw.split(/[.\n]/).filter(s => s.trim().length > 5);
-        // Johan Logic: Bulk learn the initial structures
-        bulkLearn(window.knowledgeBase);
-        addLog("System", "Hybrid Sync: Johan has access to GENai's database.");
+    // 1. AUTOMATIC CLOUD FETCH
+    async function fetchFromGitHub() {
+        const statusLight = document.getElementById('status-light');
+        const statusText = document.getElementById('status-text');
+        statusLight.style.background = "orange";
+        statusText.innerText = "Syncing with King's GitHub...";
+
+        try {
+            const response = await fetch(GITHUB_URL);
+            if (!response.ok) throw new Error("Connection failed");
+            const rawData = await response.text();
+            
+            document.getElementById('data-input').value = rawData;
+            
+            // Sync GENai (RAG)
+            window.knowledgeBase = rawData.split(/[.\n]/).filter(s => s.trim().length > 10);
+            
+            // Sync Johan (Markov)
+            bulkLearn(window.knowledgeBase);
+
+            statusLight.style.background = "var(--neon)";
+            statusText.innerText = "GitHub Connected & Trained";
+            addLog("System", "Cloud data integrated successfully.");
+        } catch (e) {
+            statusLight.style.background = "red";
+            statusText.innerText = "Offline Mode";
+            addLog("System", "Could not reach GitHub. Using local identity.");
+            bulkLearn(["Who is King? King is my creator.", "Who are you? I am Johan."]);
+        }
     }
 
     function bulkLearn(data) {
         data.forEach(text => {
             let tokens = text.toLowerCase().replace(/([.!?])/g, " $1 ").split(/\s+/).filter(w => w);
-            for (let n = 1; n <= 4; n++) { // Window size 4 for speed
+            for (let n = 1; n <= 4; n++) {
                 for (let i = 0; i <= tokens.length - n; i++) {
                     let ctx = tokens.slice(i, i + n).join("_");
                     let next = tokens[i + n];
@@ -99,28 +110,20 @@ Machine learning is a subset of AI.
         if(!input) return;
         addLog("User", input);
 
-        // 1. GENai RAG SEARCH
+        // GENai RAG Search
         let queryWords = input.replace(/[^\w\s]/g, "").split(/\s+/).filter(w => w.length > 2);
-        let relevantFacts = [];
-        
+        let relevant = [];
         window.knowledgeBase.forEach(fact => {
-            queryWords.forEach(word => {
-                if (fact.toLowerCase().includes(word)) {
-                    relevantFacts.push(fact);
-                }
-            });
+            queryWords.forEach(word => { if (fact.toLowerCase().includes(word)) relevant.push(fact); });
         });
 
-        // 2. INJECT FOUND FACTS INTO JOHAN'S IMMEDIATE BRAIN
-        if (relevantFacts.length > 0) {
-            bulkLearn(relevantFacts); 
-        }
+        // Instant Learning
+        if (relevant.length > 0) bulkLearn(relevant);
 
-        // 3. JOHAN SPEAKS
+        // Johan Response
         let tokens = input.replace(/([.!?])/g, " $1 ").split(/\s+/).filter(w => w);
         let res = [];
         let memory = tokens.slice(-4);
-        window.lastPath = [];
 
         for (let i = 0; i < 20; i++) {
             let picked = null;
@@ -128,7 +131,6 @@ Machine learning is a subset of AI.
                 let key = memory.slice(-size).join("_");
                 let options = window.brainWeights[key] || {};
                 let choices = Object.keys(options);
-                
                 if (choices.length > 0) {
                     let total = 0;
                     let weighted = choices.map(word => {
@@ -142,12 +144,8 @@ Machine learning is a subset of AI.
                         if (r <= s) { picked = item.word; break; }
                     }
                 }
-                if (picked) {
-                    window.lastPath.push({ctx: key, word: picked});
-                    break;
-                }
+                if (picked) break;
             }
-
             if (picked) {
                 res.push(picked);
                 if (".!?".includes(picked)) break;
@@ -157,15 +155,8 @@ Machine learning is a subset of AI.
         }
 
         let out = res.join(" ").replace(/\s+([.!?])/g, "$1");
-        addLog("Johan", out.charAt(0).toUpperCase() + out.slice(1) || "I'm searching my database...");
+        addLog("Johan", out.charAt(0).toUpperCase() + out.slice(1) || "I am processing the GitHub data...");
         document.getElementById('user-in').value = "";
-        updateHeatmap();
-    }
-
-    function adjustWeight(mult) {
-        window.lastPath.forEach(step => {
-            if(window.brainWeights[step.ctx]) window.brainWeights[step.ctx][step.word] *= mult;
-        });
         updateHeatmap();
     }
 
@@ -184,9 +175,8 @@ Machine learning is a subset of AI.
         });
     }
 
-    function exportBrain() { prompt("Data:", JSON.stringify(window.brainWeights)); }
-
-    window.onload = syncKnowledge;
+    // AUTO-START
+    window.onload = fetchFromGitHub;
 </script>
 </body>
 </html>
