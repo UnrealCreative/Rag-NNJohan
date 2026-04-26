@@ -2,166 +2,111 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Johan v31.1: Multi-Source</title>
+    <title>Johan v32.0: Aggressive Generalizer</title>
     <style>
-        :root { --bg: #050505; --neon: #00ffcc; --text: #d1d1d1; --accent: #bb86fc; --dark: #111; --panel: #161616; }
+        :root { --bg: #050505; --neon: #00ffcc; --text: #d1d1d1; --accent: #bb86fc; --dark: #111; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; height: 100vh; overflow: hidden; }
-        
-        #sidebar { width: 380px; background: var(--dark); padding: 15px; border-right: 1px solid #333; display: flex; flex-direction: column; gap: 15px; }
-        .panel { background: var(--panel); padding: 12px; border-radius: 8px; border: 1px solid #222; }
+        #sidebar { width: 350px; background: var(--dark); padding: 15px; border-right: 1px solid #333; display: flex; flex-direction: column; gap: 15px; }
+        .panel { background: #161616; padding: 12px; border-radius: 8px; border: 1px solid #222; }
         .panel-label { font-size: 10px; color: #888; text-transform: uppercase; margin-bottom: 8px; display: block; font-weight: bold; }
-        
-        /* Dropdown Styling */
-        select { 
-            width: 100%; background: #000; color: var(--neon); border: 1px solid var(--neon); 
-            padding: 10px; border-radius: 5px; outline: none; cursor: pointer; font-family: monospace;
-        }
-        
-        #status { font-size: 12px; color: var(--neon); margin-top: 5px; }
-        #log { flex: 1; overflow-y: auto; background: rgba(0,0,0,0.3); border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid #222; display: flex; flex-direction: column; }
-        .msg { margin-bottom: 15px; padding: 12px; border-radius: 8px; max-width: 85%; line-height: 1.4; border: 1px solid #333; }
+        select { width: 100%; background: #000; color: var(--neon); border: 1px solid var(--neon); padding: 10px; border-radius: 5px; cursor: pointer; font-family: monospace; }
+        #status { font-size: 11px; color: var(--neon); margin-top: 8px; font-family: monospace; }
+        #log { flex: 1; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid #222; display: flex; flex-direction: column; }
+        .msg { margin-bottom: 15px; padding: 12px; border-radius: 8px; max-width: 85%; line-height: 1.5; border: 1px solid #333; }
         .user { background: #1a1a1a; color: var(--neon); align-self: flex-end; border-color: var(--neon); }
-        .ai { background: #121212; color: var(--accent); align-self: flex-start; border-color: var(--accent); }
-        
+        .ai { background: #0d0d0d; color: var(--accent); align-self: flex-start; border-color: var(--accent); font-weight: 500; }
+        .sys { font-size: 10px; color: #555; text-align: center; margin: 10px 0; text-transform: uppercase; letter-spacing: 1px; }
         #chat { flex: 1; display: flex; flex-direction: column; padding: 25px; background: #0a0a0a; }
-        input { background: #000; color: var(--neon); border: 1px solid #333; padding: 15px; border-radius: 8px; width: 100%; box-sizing: border-box; font-size: 16px; outline: none; }
+        input { background: #000; color: var(--neon); border: 1px solid #333; padding: 15px; border-radius: 8px; width: 100%; box-sizing: border-box; font-size: 16px; outline: none; border-bottom: 2px solid var(--neon); }
         button { cursor: pointer; border: none; border-radius: 6px; font-weight: bold; padding: 12px; background: var(--neon); color: #000; transition: 0.2s; }
-        button:hover { filter: brightness(1.2); transform: scale(1.02); }
+        button:hover { filter: brightness(1.2); box-shadow: 0 0 15px var(--neon); }
     </style>
 </head>
 <body>
 
 <div id="sidebar">
-    <h2 style="color: var(--neon); margin: 0;">🧠 JOHAN v31</h2>
-    
+    <h2 style="color: var(--neon); margin: 0; letter-spacing: 2px;">JOHAN v32</h2>
     <div class="panel">
-        <span class="panel-label">Select Knowledge Source</span>
+        <span class="panel-label">Uplink Source</span>
         <select id="source-selector" onchange="fetchGitHub()">
-            <option value="https://raw.githubusercontent.com/UnrealCreative/aiTrainingData/main/main.txt">MAIN.TXT (Original)</option>
-            <option value="https://raw.githubusercontent.com/UnrealCreative/aiTrainingData/main/New.txt">NEW.TXT (Linguistics/History)</option>
-            <option value="https://raw.githubusercontent.com/UnrealCreative/aiTrainingData/main/New1.txt">NEW1.TXT (Expanding...)</option>
+            <option value="https://raw.githubusercontent.com/UnrealCreative/aiTrainingData/main/main.txt">MAIN DATA</option>
+            <option value="https://raw.githubusercontent.com/UnrealCreative/aiTrainingData/main/New.txt">LINGUISTICS/NEWS</option>
+            <option value="https://raw.githubusercontent.com/UnrealCreative/aiTrainingData/main/New1.txt">HISTORY/EXPANSION</option>
         </select>
-        <div id="status">📡 System Standing By</div>
+        <div id="status">INITIATING...</div>
     </div>
-
     <div class="panel" style="flex: 1; overflow-y: auto;">
-        <span class="panel-label">Data Preview</span>
-        <div id="knowledge-preview" style="font-size: 10px; color: #666; line-height: 1.6;">Select a source to view data...</div>
+        <span class="panel-label">Active Knowledge Stream</span>
+        <div id="knowledge-preview" style="font-size: 10px; color: #444; font-family: monospace;"></div>
     </div>
 </div>
 
 <div id="chat">
     <div id="log"></div>
     <div style="display:flex; gap:10px;">
-        <input type="text" id="user-in" placeholder="Ask your creation, King..." onkeypress="if(event.key==='Enter') processQuery()">
-        <button onclick="processQuery()" style="padding: 0 40px;">FIRE</button>
+        <input type="text" id="user-in" placeholder="Query the database..." onkeypress="if(event.key==='Enter') processQuery()">
+        <button onclick="processQuery()" style="padding: 0 40px;">RUN</button>
     </div>
 </div>
 
 <script>
     let knowledgeBase = [];
-    let brainWeights = {};
 
     async function fetchGitHub() {
         const url = document.getElementById('source-selector').value;
         const status = document.getElementById('status');
-        const preview = document.getElementById('knowledge-preview');
-        
-        status.innerText = "🔄 Fetching Cloud Data...";
-        status.style.color = "orange";
-
+        status.innerText = "SYNCING CLOUD...";
         try {
             const res = await fetch(url);
             const text = await res.text();
-            
-            // Clean split logic: handles both punctuation and tables better
-            knowledgeBase = text.split(/[.\n]/).map(s => s.trim()).filter(s => s.length > 5);
-            
-            preview.innerText = "• " + knowledgeBase.slice(0, 15).join("\n• ");
-            status.innerText = "✅ Source Synced Successfully";
-            status.style.color = "var(--neon)";
-            
-            addLog("System", "Johan has switched his focus to the new source.");
+            // Split by lines or periods, clean up whitespace
+            knowledgeBase = text.split(/\r?\n|\. /).map(s => s.trim()).filter(s => s.length > 5);
+            document.getElementById('knowledge-preview').innerText = knowledgeBase.slice(0, 20).join("\n\n");
+            status.innerText = "ONLINE - SOURCE CONNECTED";
+            addLog("System", "Neural links updated to current source.");
         } catch (e) {
-            status.innerText = "❌ Fetch Error";
-            status.style.color = "red";
+            status.innerText = "CONNECTION FAILED";
         }
     }
 
- function processQuery() {
+    function processQuery() {
         const input = document.getElementById('user-in').value.trim();
         if (!input) return;
         addLog("User", input);
         document.getElementById('user-in').value = "";
 
-        brainWeights = {}; // Reset for fresh context
-        
+        // BROAD-NET SEARCH: Find every sentence that contains the query word
         const queryWords = input.toLowerCase().split(/\s+/).filter(w => w.length > 2);
-        let relevantSentences = [];
+        let results = [];
 
-        // 1. THE GENERALIZER SCAN
-        // Instead of picking one, we grab EVERYTHING relevant
         knowledgeBase.forEach(sentence => {
-            let match = false;
+            let isMatch = false;
             queryWords.forEach(word => {
-                if (sentence.toLowerCase().includes(word)) match = true;
+                if (sentence.toLowerCase().includes(word)) isMatch = true;
             });
-            if (match) relevantSentences.push(sentence);
+            if (isMatch) results.push(sentence);
         });
 
-        if (relevantSentences.length > 0) {
-            // 2. BULK LEARN THE TOPIC
-            // He learns all sentences at once, creating a "cloud" of info
-            trainJohan(relevantSentences);
-            
-            // 3. GENERATE A MULTI-SENTENCE RESPONSE
-            const response = generateResponse();
-            addLog("Johan", response);
+        // RESPONSE LOGIC
+        if (results.length > 0) {
+            // Generalize: Combine all found sentences into one response
+            let fullResponse = results.join(". ").replace(/\.\./g, ".");
+            addLog("Johan", fullResponse);
         } else {
-            addLog("Johan", "That topic is not currently in my active data streams, King.");
+            addLog("Johan", "No data matches found for '" + input + "' in the current stream.");
         }
-    }
-
-    function generateResponse() {
-        let finalOutput = [];
-        let usedContexts = new Set();
-        
-        // We look at our trained weights and try to build a full summary
-        let startWords = Object.keys(brainWeights).filter(w => w.length > 3);
-        
-        // Let's generate up to 3 "thoughts" on the topic
-        for(let j = 0; j < Math.min(3, startWords.length); j++) {
-            let currentWord = startWords[j];
-            if (usedContexts.has(currentWord)) continue;
-            
-            let sentence = [currentWord];
-            for (let i = 0; i < 35; i++) {
-                const options = brainWeights[currentWord];
-                if (!options) break;
-                const next = Object.keys(options).reduce((a, b) => options[a] > options[b] ? a : b);
-                sentence.push(next);
-                if (".!?".includes(next)) break;
-                currentWord = next;
-            }
-            
-            let constructed = sentence.join(" ").replace(/\s+([.!?])/g, "$1");
-            finalOutput.push(constructed.charAt(0).toUpperCase() + constructed.slice(1));
-            usedContexts.add(currentWord);
-        }
-
-        return finalOutput.join(" ");
     }
 
     function addLog(s, t) {
         const log = document.getElementById('log');
         const d = document.createElement('div');
         d.className = `msg ${s.toLowerCase()}`;
-        d.innerHTML = `<strong>${s.toUpperCase()}</strong><br>${t}`;
+        if (s === "System") d.className = "sys";
+        d.innerHTML = s === "System" ? t : `<strong>${s.toUpperCase()}</strong><br>${t}`;
         log.appendChild(d);
         log.scrollTop = log.scrollHeight;
     }
 
-    // Initialize on first load
     window.onload = fetchGitHub;
 </script>
 </body>
