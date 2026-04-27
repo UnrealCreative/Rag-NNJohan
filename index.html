@@ -2,145 +2,182 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Johan v37.0: Loop-Breaker</title>
+    <title>JOHAN v38: Neural Lab</title>
     <style>
-        :root { --bg: #050505; --neon: #00ffcc; --accent: #bb86fc; --dark: #111; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: #d1d1d1; margin: 0; display: flex; height: 100vh; overflow: hidden; }
-        #sidebar { width: 320px; background: var(--dark); padding: 15px; border-right: 1px solid #333; display: flex; flex-direction: column; gap: 15px; }
-        .panel { background: #161616; padding: 12px; border-radius: 8px; border: 1px solid #222; }
-        .panel-label { font-size: 10px; color: #888; text-transform: uppercase; font-weight: bold; }
-        #heatmap { height: 120px; overflow-y: auto; background: #000; padding: 8px; border: 1px solid #333; font-family: monospace; font-size: 10px; color: var(--neon); }
-        #log { flex: 1; overflow-y: auto; padding: 25px; display: flex; flex-direction: column; background: #0a0a0a; }
-        .msg { margin-bottom: 20px; padding: 15px; border-radius: 12px; max-width: 85%; line-height: 1.6; border: 1px solid #222; }
-        .user { background: #1a1a1a; color: var(--neon); align-self: flex-end; }
-        .ai { background: #0d0d0d; color: var(--accent); align-self: flex-start; border-color: var(--accent); }
-        #input-area { padding: 20px; background: #111; display: flex; gap: 10px; border-top: 1px solid #222; }
-        input { flex: 1; background: #000; color: var(--neon); border: 1px solid #333; padding: 15px; border-radius: 8px; outline: none; font-size: 16px; }
-        button { background: var(--neon); color: #000; border: none; padding: 0 30px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        :root { --neon: #00ffcc; --accent: #bb86fc; --bg: #050505; --panel: #111; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: #ddd; margin: 0; display: flex; height: 100vh; overflow: hidden; }
+        
+        /* Sidebar: The Neural Map & Controls */
+        #sidebar { width: 400px; background: var(--panel); border-right: 1px solid #333; display: flex; flex-direction: column; padding: 15px; gap: 15px; }
+        .map-container { flex: 1; overflow-y: auto; background: #000; border: 1px solid #222; border-radius: 8px; padding: 10px; font-family: monospace; font-size: 11px; }
+        .node-row { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #222; }
+        .snip-btn { color: #ff4444; cursor: pointer; font-weight: bold; margin-left: 10px; }
+        
+        /* Main: Chat & Evolution */
+        #main { flex: 1; display: flex; flex-direction: column; background: #080808; }
+        #log { flex: 1; overflow-y: auto; padding: 30px; display: flex; flex-direction: column; gap: 15px; }
+        .msg { padding: 15px; border-radius: 10px; max-width: 80%; border: 1px solid #333; position: relative; }
+        .ai { color: var(--accent); align-self: flex-start; border-color: var(--accent); }
+        .user { color: var(--neon); align-self: flex-end; border-color: var(--neon); }
+        
+        .controls { padding: 10px; display: flex; gap: 10px; background: #111; border-radius: 8px; margin-top: 10px; }
+        .btn-sm { font-size: 10px; padding: 5px 10px; cursor: pointer; background: #222; color: #fff; border: 1px solid #444; border-radius: 4px; }
+        .btn-reward { border-color: var(--neon); color: var(--neon); }
+
+        #input-area { padding: 20px; border-top: 1px solid #222; display: flex; gap: 10px; }
+        input { flex: 1; background: #000; border: 1px solid #333; color: var(--neon); padding: 15px; border-radius: 8px; outline: none; }
+        button#send { background: var(--neon); color: #000; font-weight: bold; border: none; padding: 0 30px; border-radius: 8px; cursor: pointer; }
     </style>
 </head>
 <body>
 
 <div id="sidebar">
-    <h2 style="color: var(--neon); margin: 0;">JOHAN v37</h2>
-    <div class="panel">
-        <span class="panel-label">Core Status</span>
-        <div id="status" style="font-size: 11px; color: var(--neon);">SYNCING...</div>
-    </div>
-    <div class="panel">
-        <span class="panel-label">Neural Heatmap</span>
-        <div id="heatmap"></div>
-    </div>
-    <div class="panel">
-        <span class="panel-label">System Policy</span>
-        <div style="font-size: 9px; color: #666; line-height: 1.4;">
-            1. Priority to King's Logic.<br>
-            2. Eliminate Repetitive Loops.<br>
-            3. Detailed Retrieval over Generic Response.
+    <h2 style="color: var(--neon); margin: 0;">NEURAL MAP</h2>
+    <div id="status" style="font-size: 10px; color: #888;">Nodes Active: 0</div>
+    
+    <div class="map-container" id="map-view">
         </div>
+
+    <div class="panel" style="background: #1a1a1a; padding: 10px; border-radius: 8px;">
+        <span style="font-size: 10px; color: #888;">EVOLVE MEMORY</span>
+        <input type="text" id="evolve-in" placeholder="Inject new logic string..." style="width: 100%; box-sizing: border-box; margin-top: 5px; font-size: 12px; padding: 5px;">
+        <button class="btn-sm" onclick="evolveBrain()" style="width: 100%; margin-top: 5px; background: var(--accent);">INJECT</button>
     </div>
 </div>
 
-<div style="flex: 1; display: flex; flex-direction: column;">
+<div id="main">
     <div id="log"></div>
     <div id="input-area">
-        <input type="text" id="user-in" placeholder="Query the Core..." onkeypress="if(event.key==='Enter') run()">
-        <button onclick="run()">FIRE</button>
+        <input type="text" id="user-in" placeholder="Interact with Johan..." onkeypress="if(event.key==='Enter') execute()">
+        <button id="send" onclick="execute()">RUN</button>
     </div>
 </div>
 
 <script>
-    let kb = [];
-    let weights = {};
-    const sources = [
-        "https://raw.githubusercontent.com/UnrealCreative/aiTrainingData/main/main.txt",
-        "https://raw.githubusercontent.com/UnrealCreative/aiTrainingData/main/New.txt",
-        "https://raw.githubusercontent.com/UnrealCreative/aiTrainingData/main/New1.txt"
-    ];
+    let brain = {}; // The Neural Network (Word -> {NextWord: Weight})
+    let lastResponseTokens = [];
 
+    // 1. INITIAL LEARNING (The "Fetch")
     async function sync() {
-        kb = [];
+        const sources = [
+            "https://raw.githubusercontent.com/UnrealCreative/aiTrainingData/main/main.txt",
+            "https://raw.githubusercontent.com/UnrealCreative/aiTrainingData/main/New.txt",
+            "https://raw.githubusercontent.com/UnrealCreative/aiTrainingData/main/New1.txt"
+        ];
         for (let url of sources) {
             try {
                 const res = await fetch(url);
                 const text = await res.text();
-                kb = [...kb, ...text.split(/\r?\n|\. /).filter(s => s.trim().length > 3)];
-            } catch (e) { console.error("Source failed", url); }
+                learn(text);
+            } catch (e) { console.error("Sync Error"); }
         }
-        document.getElementById('status').innerText = `READY: ${kb.length} NODES`;
+        renderMap();
     }
 
-    function run() {
+    function learn(text) {
+        const lines = text.split(/\r?\n|\. /);
+        lines.forEach(line => {
+            const tokens = line.toLowerCase().replace(/([.!?])/g, " $1 ").split(/\s+/).filter(t => t.length > 0);
+            for (let i = 0; i < tokens.length - 1; i++) {
+                const a = tokens[i];
+                const b = tokens[i+1];
+                if (!brain[a]) brain[a] = {};
+                brain[a][b] = (brain[a][b] || 0) + 1;
+            }
+        });
+        document.getElementById('status').innerText = `Nodes Active: ${Object.keys(brain).length}`;
+    }
+
+    function execute() {
         const input = document.getElementById('user-in').value.trim();
         if (!input) return;
         addLog("User", input);
         document.getElementById('user-in').value = "";
 
-        // FAILSAFE: Simple Greetings
-        const low = input.toLowerCase();
-        if (low === "hi" || low === "hello" || low === "hey") {
-            addLog("Johan", "The system is online. What do you require, King?");
-            return;
-        }
-
-        const query = low.replace(/what is /g, "").replace(/who is /g, "").replace(/a /g, "").trim();
-        let matches = kb.filter(s => s.toLowerCase().includes(query));
-
-        if (matches.length > 0) {
-            weights = {};
-            matches.forEach(s => {
-                let tokens = s.toLowerCase().replace(/([.!?])/g, " $1 ").split(/\s+/).filter(t => t);
-                for (let i = 0; i < tokens.length - 1; i++) {
-                    if (!weights[tokens[i]]) weights[tokens[i]] = {};
-                    weights[tokens[i]][tokens[i+1]] = (weights[tokens[i]][tokens[i+1]] || 0) + 1;
-                }
-            });
-
-            let seed = Object.keys(weights).find(w => w.includes(query)) || Object.keys(weights)[0];
-            addLog("Johan", generate(seed));
-            updateHeatmap();
-        } else {
-            addLog("Johan", `Neural path for '${query}' not found. Provide more data to the GitHub.`);
-        }
+        const query = input.toLowerCase().replace(/what is /g, "").trim();
+        const startToken = Object.keys(brain).find(k => k.includes(query)) || Object.keys(brain)[0];
+        
+        const response = generate(startToken);
+        addLog("Johan", response, true);
     }
 
     function generate(seed) {
         let current = seed;
-        let res = [current];
-        let history = [current]; // Keep track to prevent loops
+        let result = [current];
+        lastResponseTokens = [current];
 
-        for (let i = 0; i < 60; i++) {
-            let nexts = weights[current];
-            if (!nexts) break;
+        for (let i = 0; i < 50; i++) {
+            let options = brain[current];
+            if (!options) break;
 
-            // Sort potential next words by frequency
-            let sorted = Object.keys(nexts).sort((a, b) => nexts[b] - nexts[a]);
-            
-            // LOOP BREAKER: If the top choice is already in recent history, pick the second choice
+            let sorted = Object.keys(options).sort((a, b) => options[b] - options[a]);
             let next = sorted[0];
-            if (history.slice(-4).includes(next) && sorted.length > 1) {
-                next = sorted[1]; 
-            }
 
-            res.push(next);
-            history.push(next);
+            // Loop Prevention
+            if (result.slice(-3).includes(next) && sorted.length > 1) next = sorted[1];
+
+            result.push(next);
+            lastResponseTokens.push(next);
             if (".!?".includes(next)) break;
             current = next;
         }
-        return res.join(" ").replace(/\s+([.!?])/g, "$1").charAt(0).toUpperCase() + res.join(" ").slice(1);
+        return result.join(" ").replace(/\s+([.!?])/g, "$1");
     }
 
-    function updateHeatmap() {
-        const h = document.getElementById('heatmap');
-        h.innerHTML = Object.keys(weights).slice(0, 15).map(k => `<div>${k} → ${Object.keys(weights[k])[0]}</div>`).join("");
+    // 2. REWARD SYSTEM
+    function reward() {
+        for (let i = 0; i < lastResponseTokens.length - 1; i++) {
+            const a = lastResponseTokens[i];
+            const b = lastResponseTokens[i+1];
+            brain[a][b] += 5; // Boost weight
+        }
+        renderMap();
+        alert("Path Reinforced.");
     }
 
-    function addLog(s, t) {
-        const l = document.getElementById('log');
+    // 3. SNIPPING LOGIC
+    function snip(a, b) {
+        if (brain[a] && brain[a][b]) {
+            delete brain[a][b];
+            renderMap();
+        }
+    }
+
+    function evolveBrain() {
+        const str = document.getElementById('evolve-in').value;
+        if (str) {
+            learn(str);
+            document.getElementById('evolve-in').value = "";
+            renderMap();
+        }
+    }
+
+    function renderMap() {
+        const view = document.getElementById('map-view');
+        view.innerHTML = "";
+        const keys = Object.keys(brain).slice(0, 50); // Show top 50 nodes
+        keys.forEach(a => {
+            const targets = brain[a];
+            Object.keys(targets).forEach(b => {
+                const row = document.createElement('div');
+                row.className = "node-row";
+                row.innerHTML = `<span>${a} → ${b} (${targets[b]})</span><span class="snip-btn" onclick="snip('${a}','${b}')">✂</span>`;
+                view.appendChild(row);
+            });
+        });
+    }
+
+    function addLog(s, t, isAI = false) {
+        const log = document.getElementById('log');
         const d = document.createElement('div');
         d.className = `msg ${s.toLowerCase()}`;
-        d.innerHTML = `<strong>${s.toUpperCase()}</strong><br>${t}`;
-        l.appendChild(d); l.scrollTop = l.scrollHeight;
+        let html = `<strong>${s.toUpperCase()}</strong><br>${t}`;
+        if (isAI) {
+            html += `<div class="controls"><button class="btn-sm btn-reward" onclick="reward()">REWARD</button></div>`;
+        }
+        d.innerHTML = html;
+        log.appendChild(d);
+        log.scrollTop = log.scrollHeight;
     }
 
     window.onload = sync;
