@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Johan v35.0: Neural-Hybrid</title>
+    <title>Johan v35.1: Neural-Hybrid</title>
     <style>
         :root { --bg: #050505; --neon: #00ffcc; --accent: #bb86fc; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: #d1d1d1; margin: 0; display: flex; height: 100vh; overflow: hidden; }
@@ -57,20 +57,25 @@
         } catch (e) { document.getElementById('status').innerText = "OFFLINE"; }
     }
 
-    function execute() {
+function execute() {
         const input = document.getElementById('user-in').value.trim();
         if (!input) return;
         addLog("User", input);
         document.getElementById('user-in').value = "";
 
-        // 1. SELECTIVE RETRIEVAL
-        const query = input.toLowerCase().replace(/what is /g, "").trim();
+        // 1. SELECTIVE RETRIEVAL (Cleaning the query)
+        const query = input.toLowerCase()
+            .replace(/what is a /g, "").replace(/what is /g, "")
+            .replace(/who is /g, "").trim();
+        
+        // Find any sentence that contains the query word
         let matches = kb.filter(s => s.toLowerCase().includes(query));
 
         if (matches.length > 0) {
-            // 2. NEURAL TRAINING (The "NN" Part)
-            weights = {}; // Reset brain
+            weights = {}; // Reset neural map
+            
             matches.forEach(s => {
+                // Break into tokens and build the Markov weights
                 let tokens = s.toLowerCase().replace(/([.!?])/g, " $1 ").split(/\s+/).filter(t => t);
                 for (let i = 0; i < tokens.length - 1; i++) {
                     if (!weights[tokens[i]]) weights[tokens[i]] = {};
@@ -78,26 +83,34 @@
                 }
             });
 
+            // 2. SEED SELECTION (Finding the starting word)
+            // We look for the query word itself as the starting point
+            let startWord = Object.keys(weights).find(w => w.includes(query)) || Object.keys(weights)[0];
+
             // 3. PREDICTIVE GENERATION
-            let response = generate();
+            let response = generate(startWord);
             addLog("Johan", response);
         } else {
-            addLog("Johan", "That sequence is not in my weights, King.");
+            addLog("Johan", "I have no neural data for '" + query + "' in this source, King.");
         }
     }
 
-    function generate() {
-        let current = Object.keys(weights)[0]; // Start with the first word found
+    function generate(seed) {
+        let current = seed;
         let res = [current];
-        for (let i = 0; i < 50; i++) {
+        
+        for (let i = 0; i < 60; i++) {
             let nexts = weights[current];
             if (!nexts) break;
-            // Pick most frequent next word
+            
+            // Pick the next word based on highest weight
             let next = Object.keys(nexts).reduce((a, b) => nexts[a] > nexts[b] ? a : b);
             res.push(next);
+            
             if (".!?".includes(next)) break;
             current = next;
         }
+        
         let output = res.join(" ").replace(/\s+([.!?])/g, "$1");
         return output.charAt(0).toUpperCase() + output.slice(1);
     }
