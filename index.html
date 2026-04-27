@@ -75,19 +75,21 @@ function processQuery() {
         addLog("User", input);
         document.getElementById('user-in').value = "";
 
-        // Filter out "what is", "who is", etc. to find the CORE topic
+        // Normalize the query (removes "what is", etc.)
         const cleanQuery = input.toLowerCase()
             .replace(/what is a /g, "").replace(/what is /g, "")
-            .replace(/who is /g, "").replace(/tell me about /g, "");
+            .replace(/who is /g, "").replace(/tell me about /g, "").trim();
         
-        const queryWords = cleanQuery.split(/\s+/).filter(w => w.length > 2);
+        const queryWords = cleanQuery.split(/\s+/).filter(w => w.length >= 2);
         let results = [];
 
-        // SCAN: Grab matches but prioritize sentences where the word appears early
+        // SCAN: Case-insensitive search
         knowledgeBase.forEach(sentence => {
             let matchCount = 0;
+            const lowerSentence = sentence.toLowerCase();
+            
             queryWords.forEach(word => {
-                if (sentence.toLowerCase().includes(word)) matchCount++;
+                if (lowerSentence.includes(word)) matchCount++;
             });
             
             if (matchCount > 0) {
@@ -95,16 +97,15 @@ function processQuery() {
             }
         });
 
-        // SORT & LIMIT: Show the top 5 most relevant sentences so it stays readable
         if (results.length > 0) {
+            // Sort by match quality and show top 6
             results.sort((a, b) => b.score - a.score);
-            let topMatches = results.slice(0, 5).map(r => r.text);
+            let topMatches = results.slice(0, 6).map(r => r.text);
             
-            // Join them and clean up the "echo" loops
-            let fullResponse = topMatches.join(". ").replace(/\.\./g, ".");
-            addLog("Johan", fullResponse);
+            let finalOutput = topMatches.join(". ").replace(/\.\./g, ".");
+            addLog("Johan", finalOutput);
         } else {
-            addLog("Johan", "I have no data on '" + cleanQuery + "' in this uplink, King.");
+            addLog("Johan", "I have no data on '" + cleanQuery + "' in this specific source, King. Switch the source or add it to GitHub.");
         }
     }
 
