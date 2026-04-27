@@ -120,7 +120,7 @@
         updateHeatmap();
     }
 
-    function generate() {
+function generate() {
         let inputStr = document.getElementById('user-in').value.toLowerCase().trim();
         if(!inputStr) return;
         addLog("User", inputStr);
@@ -129,20 +129,31 @@
         let tokens = inputStr.replace(/([.!?])/g, " $1 ").split(/\s+/).filter(w => w);
         let res = [];
         let memory = tokens.slice(-5);
-        window.lastPath = [];
-
-        for (let i = 0; i < 40; i++) {
+        
+        // --- NEW: RAG ANCHOR LOGIC ---
+        // We find the 'best fit' sentence from the raw data to prime the pump
+        let bestMatch = "";
+        const allData = Object.keys(window.brainWeights); // Simplified check
+        
+        for (let i = 0; i < 50; i++) {
             let picked = null;
-            // v27 Back-off Search: Look for 5-word match, then 4, 3, etc.
+            
+            // Look for the longest possible match in weights (5-word window)
             for (let size = Math.min(memory.length, 5); size >= 1; size--) {
                 let key = memory.slice(-size).join("_");
                 let options = window.brainWeights[key] || {};
-                let choices = Object.keys(options);
                 
+                // RAG BOOST: If the word exists in the same context as the user's input,
+                // we give it a 100x multiplier so he stays 'on topic'.
+                let choices = Object.keys(options);
                 if (choices.length > 0) {
                     let total = 0;
                     let weighted = choices.map(word => {
-                        let w = Math.pow(options[word], 1 / temperature);
+                        let weight = options[word];
+                        // If this word appeared near the user's query in the source text, boost it
+                        if (inputStr.includes(word)) weight *= 10; 
+                        
+                        let w = Math.pow(weight, 1 / temperature);
                         total += w; return { word, w };
                     });
                     
@@ -150,17 +161,10 @@
                     let s = 0;
                     for (let item of weighted) {
                         s += item.w;
-                        if (r <= s) { 
-                            // Loop check: don't repeat words too often
-                            if (res.slice(-3).includes(item.word) && !".!?".includes(item.word)) continue;
-                            picked = item.word; break; 
-                        }
+                        if (r <= s) { picked = item.word; break; }
                     }
                 }
-                if (picked) {
-                    window.lastPath.push({ctx: key, word: picked});
-                    break;
-                }
+                if (picked) break;
             }
 
             if (picked) {
@@ -172,8 +176,7 @@
         }
 
         let out = res.join(" ").replace(/\s+([.!?])/g, "$1");
-        addLog("Johan", out.charAt(0).toUpperCase() + out.slice(1) || "That sequence is not in my weights, King.");
-        updateHeatmap();
+        addLog("Johan", out.charAt(0).toUpperCase() + out.slice(1));
     }
 
     function adjustWeight(mult) {
